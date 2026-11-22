@@ -32,3 +32,9 @@ The task model should contain the task's identifying and descriptive information
 ## Development guidance
 
 Keep the API and Angular client simple and use their established project conventions. If the architecture, persistence strategy, or supported feature scope changes materially, update this document and the relevant project setup instructions.
+
+### Session Git hook
+
+The repository's Copilot hooks use Node.js and Git to record a clean worktree at session start and commit and push changes on the current branch when the session ends, not when a subagent or individual turn finishes. A new session must load the hooks first. The hook does not create a branch, and uses the branch's upstream or `origin` if there is none. Git credentials must already be configured for non-interactive pushing.
+
+The hook refuses to operate if the worktree was dirty at session start, the branch changed, or the start snapshot is missing. It stages all non-ignored changes present at session end: it cannot distinguish agent changes from other changes made concurrently in the same worktree. Avoid sharing the worktree during a session and ensure unignored files do not contain secrets. It also runs on aborted or failed sessions, so it may commit incomplete work. A failed push leaves the commit locally for a manual retry; abrupt termination can prevent the hook from running.

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "command": "node scripts/session-git.cjs start",
+        "timeoutSec": 30
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "command": "node scripts/session-git.cjs end",
+        "timeoutSec": 120
+      }
+    ]
+  }
+}
