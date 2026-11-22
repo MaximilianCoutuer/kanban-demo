@@ -4,20 +4,62 @@ A deliberately small Kanban board for a technical session, using Angular for the
 
 ## Features
 
-- Create, edit, and delete tasks.
-- Move tasks among **To Do**, **In Progress**, and **Done**.
-- Set task priority to **Low**, **Medium**, or **High**.
-- Filter tasks by status and priority.
-- Optionally associate a task with a GitHub issue.
+- Add tasks with a title, complete them, and delete them.
+- View **To Do**, **In Progress**, and **Done** columns. New tasks start in To Do; completing them moves them directly to Done.
+- Keep tasks synchronized with the API, including after browser refresh.
+- Show request errors without treating failed changes as successful.
+
+Authentication, editing, moving tasks to In Progress, priorities, filtering, and GitHub issue associations are not implemented yet.
 
 ## Architecture
 
 The application has two main parts:
 
-- **Angular client** — presents the board, task editing controls, and status/priority filters. It calls the API rather than owning the authoritative task collection.
-- **.NET API** — exposes the task operations and keeps the task collection in memory. The API is the single source of truth while the application process is running.
+- **Angular 21 client** — presents the board and task actions. It calls the API rather than owning the authoritative task collection.
+- **.NET 10 API** — exposes task operations and uses Entity Framework Core's in-memory database provider. The API is the single source of truth while the application process is running.
 
-The task model should contain the task's identifying and descriptive information, status, priority, and an optional GitHub issue reference. Keep status and priority to the small, explicit sets above. The GitHub association is optional; the core board must work without GitHub access.
+Tasks currently contain a server-generated UUID, a title, and a status (`ToDo`, `InProgress`, or `Done`). Titles are trimmed and must contain 1–200 UTF-16 code units. The board starts empty and data is intentionally lost when the API restarts. There is no background polling: another browser sees changes when it reloads.
+
+## Running locally
+
+Requires the .NET 10 SDK and a Node version supported by Angular 21 (for example Node 22.12+ in the 22.x series). Node 25 is unsupported by Angular even though the checks ran successfully in this session.
+
+Start the API from the repository root:
+
+```powershell
+dotnet restore api\Kanban.sln
+dotnet run --project api\Kanban.Api --no-launch-profile
+```
+
+In another terminal:
+
+```powershell
+Set-Location client
+npm ci
+npm start
+```
+
+Open `http://localhost:4200`. Angular proxies `/api` requests to `http://localhost:5000`; no authentication or external database setup is needed. Stop these processes when finished.
+
+API operations:
+
+| Method | Path | Result |
+| --- | --- | --- |
+| GET | `/api/tasks` | Task array |
+| POST | `/api/tasks` | Create from `{"title":"My task"}`; returns the created task |
+| POST | `/api/tasks/{id}/complete` | Returns the completed task; repeated completion is safe |
+| DELETE | `/api/tasks/{id}` | Deletes the task; returns 204 |
+
+Invalid input returns 400; missing task IDs return 404. Errors use Problem Details.
+
+Run automated checks:
+
+```powershell
+dotnet test api\Kanban.sln
+Set-Location client
+npm run build
+npm test -- --watch=false
+```
 
 ## Architectural decisions
 
