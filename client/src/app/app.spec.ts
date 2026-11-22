@@ -45,6 +45,7 @@ describe('task board', () => {
     expect(footers).toHaveLength(1);
     const footer = footers[0];
     expect(footer.textContent).toBe('(c) Maximilian Coutuer');
+    expect(getComputedStyle(footer).height).toBe('48px');
     expect(main.querySelector('footer')).toBeNull();
     expect(main.nextElementSibling).toBe(footer);
     expect(element.textContent).toContain('Loading tasks');
