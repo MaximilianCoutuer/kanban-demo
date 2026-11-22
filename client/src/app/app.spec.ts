@@ -103,6 +103,8 @@ describe('task board', () => {
     render();
     const request = http.expectOne('/api/tasks/a/complete');
     expect(button('Complete').disabled).toBe(true);
+    button('Complete').dispatchEvent(new MouseEvent('click'));
+    http.expectNone('/api/tasks/a/complete');
     expect(element.querySelector('section')!.textContent).toContain('First task');
     request.flush({}, { status: 500, statusText: 'Error' });
     render();
@@ -118,6 +120,8 @@ describe('task board', () => {
     expect(deleteFirst.disabled).toBe(true);
     const remove = http.expectOne('/api/tasks/a');
     expect(element.textContent).toContain('First task');
+    deleteFirst.dispatchEvent(new MouseEvent('click'));
+    http.expectNone('/api/tasks/a');
     remove.flush(null, { status: 204, statusText: 'No Content' });
     render();
     expect(element.textContent).not.toContain('First task');
