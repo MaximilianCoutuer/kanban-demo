@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "./scripts/lint.sh",
+        "timeoutSec": 120
+      }
+    ]
+  }
+}
