@@ -1,0 +1,30 @@
+:host { display: block; }
+.shell { max-width: 1200px; margin: auto; padding: 2rem 1.25rem 4rem; }
+header { margin-bottom: 2rem; }
+h1 { margin: .2rem 0; font-size: 2.4rem; }
+header p { color: #48566b; margin: .4rem 0; }
+.eyebrow { color: #3156a3; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
+.new-task { background: white; border: 1px solid #d5dce7; border-radius: .75rem; padding: 1.25rem; margin-bottom: 1.5rem; }
+label { display: block; font-weight: 700; margin-bottom: .5rem; }
+.form-row { display: flex; gap: .75rem; }
+input { min-width: 0; flex: 1; border: 1px solid #8a98ab; border-radius: .4rem; padding: .7rem; font: inherit; }
+button { font: inherit; font-weight: 600; border: 1px solid #284e9a; border-radius: .4rem; background: #315eaf; color: white; padding: .6rem .9rem; cursor: pointer; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+button:focus-visible, input:focus-visible { outline: 3px solid #d18a00; outline-offset: 2px; }
+.help { color: #536176; font-size: .875rem; margin: .5rem 0 0; }
+.error { color: #9f2424; }
+p.error:empty { display: none; }
+.notice { margin: 0 0 1rem; }
+.retry { background: white; color: #284e9a; padding: .3rem .6rem; }
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.column { background: #e8edf5; border-radius: .75rem; padding: 1rem; min-width: 0; }
+h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+ul { padding: 0; margin: 0; list-style: none; display: grid; gap: .75rem; }
+.empty { color: #536176; font-size: .9rem; }
+.card { background: white; border: 1px solid #d5dce7; border-radius: .5rem; padding: 1rem; }
+.task-title { margin: 0 0 1rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.actions button { font-size: .875rem; }
+.delete { color: #8d2929; border-color: #b76565; background: white; }
+@media (max-width: 700px) { .board { grid-template-columns: 1fr; } }
+@media (max-width: 400px) { .form-row { flex-direction: column; } }

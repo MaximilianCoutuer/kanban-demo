@@ -1,0 +1,64 @@
+<main class="shell">
+  <header>
+    <p class="eyebrow">Task board</p>
+    <h1>Kanban</h1>
+    <p>Keep track of your work, one task at a time.</p>
+  </header>
+
+  <form class="new-task" [formGroup]="form" (ngSubmit)="add()" novalidate>
+    <label for="title">Task title</label>
+    <div class="form-row">
+      <input id="title" type="text" formControlName="title" [readOnly]="creating()" [attr.aria-invalid]="(title.touched && title.invalid) || titleError() ? 'true' : null"
+        aria-describedby="title-help title-error" (input)="titleError.set('')" />
+      <button type="submit" [disabled]="creating() || unavailable()">{{ creating() ? 'Adding…' : 'Add task' }}</button>
+    </div>
+    <p id="title-help" class="help">Enter a title of 1–200 characters.</p>
+    <p id="title-error" class="error" aria-live="polite">
+      @if (titleError()) {
+        {{ titleError() }}
+      } @else if (title.touched && title.invalid) {
+        Enter a title of 1–200 characters, excluding surrounding whitespace.
+      }
+    </p>
+  </form>
+
+  @if (message()) {
+    <p class="notice error" role="alert">{{ message() }}</p>
+  }
+  @if (loading()) {
+    <p class="notice" role="status">Loading tasks…</p>
+  }
+  @if (loadFailed()) {
+    <div class="notice error" role="alert">
+      Could not load tasks. <button type="button" class="retry" (click)="load()">Retry</button>
+    </div>
+  }
+
+  <div class="board">
+    @for (column of columns; track column.status) {
+      <section class="column" [attr.aria-labelledby]="'heading-' + column.status">
+        <h2 [id]="'heading-' + column.status">{{ column.label }}</h2>
+        @let columnTasks = tasksFor(column.status);
+        @if (columnTasks.length === 0 && !loading() && !loadFailed()) {
+          <p class="empty">No tasks yet.</p>
+        }
+        <ul>
+          @for (task of columnTasks; track task.id) {
+            <li class="card">
+              <p class="task-title">{{ task.title }}</p>
+              <div class="actions">
+                @if (task.status !== 'Done') {
+                  <button type="button" (click)="complete(task)" [disabled]="isPending(task.id) || unavailable()"
+                    [attr.aria-label]="'Complete ' + task.title">Complete</button>
+                }
+                <button type="button" class="delete" (click)="remove(task)" [disabled]="isPending(task.id) || unavailable()"
+                  [attr.aria-label]="'Delete ' + task.title">Delete</button>
+              </div>
+              @if (isPending(task.id)) { <span class="help" role="status">Saving…</span> }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  </div>
+</main>
