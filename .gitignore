@@ -1,0 +1,32 @@
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Node.js and Angular
+node_modules/
+dist/
+coverage/
+.angular/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# .NET
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+TestResults/
+
+# Logs
+*.log
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*~
