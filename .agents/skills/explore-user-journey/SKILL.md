@@ -13,8 +13,8 @@ perspective, not just that automated tests pass.
 
 ## Prerequisites
 
-- AgentBoard API and frontend are running.
-- A browser automation tool is available.
+- API and frontend are running.
+- A browser automation tool such as Playwright is available.
 - Acceptance criteria have been identified.
 
 ## Procedure
