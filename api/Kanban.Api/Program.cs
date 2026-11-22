@@ -8,11 +8,10 @@ var databaseName = Guid.NewGuid().ToString();
 builder.Services.AddDbContext<KanbanDbContext>(options =>
     options.UseInMemoryDatabase(databaseName));
 builder.Services.AddSingleton<TaskStoreLock>();
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
-app.UseCors();
+app.UseExceptionHandler();
 
 app.MapGet("/api/tasks", (KanbanDbContext db, TaskStoreLock storeLock) =>
 {
@@ -69,7 +68,7 @@ app.MapPost("/api/tasks/{id}/complete", (string id, KanbanDbContext db, TaskStor
         var task = db.Tasks.Find(taskId);
         if (task is null)
         {
-            return Results.NotFound();
+            return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Task not found");
         }
 
         task.Status = "Done";
@@ -90,7 +89,7 @@ app.MapDelete("/api/tasks/{id}", (string id, KanbanDbContext db, TaskStoreLock s
         var task = db.Tasks.Find(taskId);
         if (task is null)
         {
-            return Results.NotFound();
+            return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Task not found");
         }
 
         db.Tasks.Remove(task);

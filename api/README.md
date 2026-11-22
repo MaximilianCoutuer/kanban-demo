@@ -8,8 +8,9 @@ dotnet run --project api\Kanban.Api --no-launch-profile
 ```
 
 The API listens at `http://localhost:5000`. Data is held in memory and is lost
-when the process stops. Browser clients may access the API using CORS; there is
-no authentication.
+when the process stops. The Angular development server proxies relative `/api`
+requests to the API, so cross-origin CORS access is not needed. There is no
+authentication.
 
 - `GET /api/tasks` lists tasks ordered by UUID.
 - `POST /api/tasks` creates a task from `{"title":"..."}`.
