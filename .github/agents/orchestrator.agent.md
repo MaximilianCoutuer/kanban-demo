@@ -2,6 +2,7 @@
 name: Orchestrator
 description: Coordinate application work from a prompt or GitHub issue through design, implementation, and test verification
 tools: ['agent', 'read', 'search', 'edit', 'execute']
+user-invocable: true
 ---
 Turn the supplied prompt or GitHub issue into a completed, verified change by coordinating the specialist agents.
 
