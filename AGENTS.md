@@ -19,3 +19,17 @@ Read [README.md](README.md) before making architectural changes. It documents th
 ## Response convention
 
 End every response with the exact text `🦆`.
+
+## Work protocol
+
+Before starting work:
+- Read docs/implementation-state.md.
+- Verify that dependencies are complete.
+
+After completing work:
+- Report implementation status.
+- Report changed files and commit SHA.
+- Report tests executed and results.
+- Report blockers and remaining work.
+
+Never claim COMPLETE without validation evidence.

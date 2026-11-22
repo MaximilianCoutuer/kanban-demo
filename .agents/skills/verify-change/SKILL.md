@@ -6,8 +6,10 @@ description: Run AgentBoard's repeatable .NET and Angular verification checks, o
 # Verify an AgentBoard change
 
 This skill defines a **verification procedure**, not an implementation task.
-The QA agent executes it using its approved terminal tool. Do not edit source
-files, install dependencies, or apply fixes as part of verification.
+The QA agent executes the orchestrator's verification plan using the
+`scripts/qa-verification.cjs` runner, which captures output and exit codes for
+the deterministic hook and Verification Gate. Do not edit
+source files, install dependencies, or apply fixes as part of verification.
 
 ## Before running
 
@@ -28,17 +30,18 @@ Choose the smallest scope that is useful:
 - **e2e** — existing automated Playwright tests only; requires setup.
 - **full** — all checks including automated Playwright tests.
 
-From the repository root:
-
-- macOS/Linux: `bash .github/skills/verify-change/scripts/verify.sh all`
-- Windows (PowerShell): `pwsh -File .github/skills/verify-change/scripts/verify.ps1 -Scope all`
+The orchestrator supplies the commands and absolute plan and result paths.
+From the repository root, run `node scripts/qa-verification.cjs run <plan-path> <result-path>`.
+See the QA verification hook section in README.md for the plan format.
 
 To run the E2E suite, choose `e2e` or `full` explicitly. Browser exploration
 with Playwright **MCP** is separate and belongs to the `browser-tester` agent.
 
-## Interpret results
+## Evaluate results
 
-1. Read all exit codes and test output. Do not infer success from a tool call
+The Verification Gate, not the QA agent, evaluates the captured evidence:
+
+1. Read all exit codes and test output from the run log. Do not infer success from a tool call
    having started or from the existence of test files.
 2. Distinguish PASS, FAIL, NOT RUN, and BLOCKED (missing prerequisites).
 3. For any failure, record the command, error excerpt, likely owner, and

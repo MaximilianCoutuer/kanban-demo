@@ -12,3 +12,16 @@ Verify frontend changes against the original requirements and the Architect desi
 5. Stop only the services you started for this verification when they are no longer needed.
 
 Use isolated test data and avoid changing external or shared data without authorization. If startup, service readiness, or Playwright MCP access is unavailable, report the blocker explicitly; do not claim browser verification passed or substitute a different browser tool for Playwright MCP.
+
+## Handoff
+
+Expect from the Orchestrator:
+- The original prompt or issue, acceptance criteria, Architect design, and changed user flows to verify.
+- The frontend implementation worktree path and branch, and, when needed, the backend worktree path and branch for the API service.
+
+If essential handoff information is missing or the specified worktree or branch cannot be verified, report the blocker instead of testing a different implementation.
+
+Return to the Orchestrator:
+- The frontend worktree, branch and tested revision, and the backend worktree, branch and revision if used.
+- The service startup commands and readiness results, and each browser scenario's pass, fail, or blocked result.
+- Actionable defect details, including reproduction steps and expected versus actual behavior, plus any unverified flows or other blockers.

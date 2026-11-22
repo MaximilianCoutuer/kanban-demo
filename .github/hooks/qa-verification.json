@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "subagentStop": [
+      {
+        "type": "command",
+        "command": "node scripts/qa-verification.cjs hook",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}
