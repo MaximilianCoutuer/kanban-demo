@@ -8,6 +8,7 @@ A deliberately small Kanban board for a technical session, using Angular for the
 - View **To Do**, **In Progress**, and **Done** columns. New tasks start in To Do; completing them moves them directly to Done.
 - Keep tasks synchronized with the API, including after browser refresh.
 - Show request errors without treating failed changes as successful.
+- Read tasks from an MCP client using a list tool or an ID lookup tool.
 
 Authentication, editing, moving tasks to In Progress, priorities, filtering, and GitHub issue associations are not implemented yet.
 
@@ -17,6 +18,7 @@ The application has two main parts:
 
 - **Angular 21 client** — presents the board and task actions. It calls the API rather than owning the authoritative task collection.
 - **.NET 10 API** — exposes task operations and uses Entity Framework Core's in-memory database provider. The API is the single source of truth while the application process is running.
+- **MCP server** — hosted by the API over Streamable HTTP; its read-only tools query the same in-memory task collection as the board.
 
 Tasks currently contain a server-generated UUID, a title, and a status (`ToDo`, `InProgress`, or `Done`). Titles are trimmed and must contain 1–200 UTF-16 code units. The board starts empty and data is intentionally lost when the API restarts. There is no background polling: another browser sees changes when it reloads.
 
@@ -52,6 +54,21 @@ API operations:
 
 Invalid input returns 400; missing task IDs return 404. Errors use Problem Details.
 
+### MCP access
+
+Start the API as shown above and connect an MCP client using Streamable HTTP to
+`http://localhost:5000/mcp`. The endpoint is local and unauthenticated; browser
+requests with an Origin other than `http://localhost:5000` are rejected.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `list_kanban_items` | None | `{"tasks":[{"id":"...","title":"...","status":"ToDo"}]}` |
+| `get_kanban_item` | `{"id":"<task UUID>"}` | `{"task":{"id":"...","title":"...","status":"ToDo"}}` |
+
+Both tools are read-only. The list is ordered by ID and is empty when there are
+no tasks. Invalid UUIDs and unknown IDs return tool errors. The MCP server uses
+the API's live in-memory data, which is lost when the API restarts.
+
 Run automated checks:
 
 ```powershell
@@ -67,6 +84,7 @@ npm test -- --watch=false
 | --- | --- |
 | Separate Angular UI from a .NET API | Demonstrates a common client/API boundary and keeps UI concerns independent from task operations. |
 | Use in-memory storage | Makes the demo easy to run without database setup and keeps attention on the application flow. Data is intentionally lost when the API process restarts. |
+| Host read-only MCP tools in the API | MCP clients read the same live tasks as the board without introducing a second data store. |
 | Keep status and priority as constrained values | The board has a fixed, small workflow; constrained values make filtering and transitions straightforward and prevent unnecessary configuration. |
 | Make the GitHub issue link optional | Allows the board to be demonstrated independently, while showing how an external reference can be attached to a task. |
 | Avoid expanding beyond the listed task workflow | Keeps the technical-session example understandable and focused. |
