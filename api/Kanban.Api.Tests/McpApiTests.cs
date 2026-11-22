@@ -3,10 +3,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Kanban.Api;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace Kanban.Api.Tests;
 
@@ -70,6 +74,120 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task SdkClientInitializesDiscoversAndCallsOverStreamableHttp()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var http = factory.CreateClient();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var transport = new HttpClientTransport(new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(http.BaseAddress!, "/mcp"),
+            TransportMode = HttpTransportMode.StreamableHttp,
+            EnableStandaloneGetStream = false
+        }, http, null, false);
+        await using var mcp = await McpClient.CreateAsync(transport, cancellationToken: timeout.Token);
+        var tools = await mcp.ListToolsAsync(cancellationToken: timeout.Token);
+        Assert.Equal(new[] { "get_kanban_item", "list_kanban_items" },
+            tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal));
+
+        using var created = await http.PostAsJsonAsync("/api/tasks", new { title = "\u65e5\u672c\u8a9e \ud83d\ude00 caf\u00e9" }, timeout.Token);
+        created.EnsureSuccessStatusCode();
+        var task = (await created.Content.ReadFromJsonAsync<TaskDto>(cancellationToken: timeout.Token))!;
+        var result = await mcp.CallToolAsync("get_kanban_item", new Dictionary<string, object?>
+        {
+            ["id"] = task.Id.ToString()
+        }, cancellationToken: timeout.Token);
+        Assert.NotEqual(true, result.IsError);
+        var text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content));
+        using var document = JsonDocument.Parse(text.Text);
+        Assert.Equal(task, JsonSerializer.Deserialize<TaskDto>(document.RootElement.GetProperty("task"), JsonSerializerOptions.Web));
+
+        var list = await mcp.CallToolAsync("list_kanban_items", cancellationToken: timeout.Token);
+        Assert.NotEqual(true, list.IsError);
+        var listText = Assert.IsType<TextContentBlock>(Assert.Single(list.Content));
+        using var listDocument = JsonDocument.Parse(listText.Text);
+        Assert.Equal(task, JsonSerializer.Deserialize<TaskDto>(listDocument.RootElement.GetProperty("tasks")[0], JsonSerializerOptions.Web));
+    }
+
+    [Fact]
+    public async Task SdkClientReadsLiveRestDataOverTcp()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        factory.UseKestrel(0);
+        factory.StartServer();
+        var addresses = factory.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!;
+        var address = new Uri(Assert.Single(addresses.Addresses));
+        Assert.True(address.IsLoopback);
+        Assert.NotEqual(5000, address.Port);
+        Assert.NotEqual(0, address.Port);
+        using var http = new HttpClient { BaseAddress = address };
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var transport = new HttpClientTransport(new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(address, "/mcp"),
+            TransportMode = HttpTransportMode.StreamableHttp,
+            EnableStandaloneGetStream = false
+        }, http, null, false);
+        await using var mcp = await McpClient.CreateAsync(transport, cancellationToken: timeout.Token);
+        var tools = await mcp.ListToolsAsync(cancellationToken: timeout.Token);
+        Assert.Equal(new[] { "get_kanban_item", "list_kanban_items" },
+            tools.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal));
+
+        using var created = await http.PostAsJsonAsync("/api/tasks", new { title = "TCP task" }, timeout.Token);
+        created.EnsureSuccessStatusCode();
+        var task = (await created.Content.ReadFromJsonAsync<TaskDto>(cancellationToken: timeout.Token))!;
+        var list = await mcp.CallToolAsync("list_kanban_items", cancellationToken: timeout.Token);
+        Assert.NotEqual(true, list.IsError);
+        var listText = Assert.IsType<TextContentBlock>(Assert.Single(list.Content));
+        using var listDocument = JsonDocument.Parse(listText.Text);
+        var tasks = listDocument.RootElement.GetProperty("tasks");
+        Assert.Equal(1, tasks.GetArrayLength());
+        Assert.Equal(task, JsonSerializer.Deserialize<TaskDto>(tasks[0], JsonSerializerOptions.Web));
+
+        var get = await mcp.CallToolAsync("get_kanban_item", new Dictionary<string, object?>
+        {
+            ["id"] = task.Id.ToString()
+        }, cancellationToken: timeout.Token);
+        Assert.NotEqual(true, get.IsError);
+        var getText = Assert.IsType<TextContentBlock>(Assert.Single(get.Content));
+        using var getDocument = JsonDocument.Parse(getText.Text);
+        Assert.Equal(task, JsonSerializer.Deserialize<TaskDto>(getDocument.RootElement.GetProperty("task"), JsonSerializerOptions.Web));
+    }
+
+    [Fact]
+    public async Task StructuredAndTextResultsMatchAndAreOrderedOrdinally()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+        var ids = new List<string>();
+        foreach (var title in new[] { "Z", "\u65e5\u672c\u8a9e \ud83d\ude00 caf\u00e9", "A", "\u00e9" })
+        {
+            using var response = await client.PostAsJsonAsync("/api/tasks", new { title });
+            response.EnsureSuccessStatusCode();
+            ids.Add((await response.Content.ReadFromJsonAsync<TaskDto>())!.Id.ToString());
+        }
+        using var list = await Call(client, "list_kanban_items", new { });
+        var structured = Structured(list);
+        var items = structured.GetProperty("tasks").EnumerateArray().ToArray();
+        Assert.Equal(ids.OrderBy(id => id, StringComparer.Ordinal), items.Select(t => t.GetProperty("id").GetString()));
+        Assert.Contains(items, t => t.GetProperty("title").GetString() == "\u65e5\u672c\u8a9e \ud83d\ude00 caf\u00e9");
+        AssertTextMatchesStructured(list);
+        using var get = await Call(client, "get_kanban_item", new { id = ids[1] });
+        Assert.Equal("\u65e5\u672c\u8a9e \ud83d\ude00 caf\u00e9", Structured(get).GetProperty("task").GetProperty("title").GetString());
+        AssertTextMatchesStructured(get);
+    }
+
+    private static void AssertTextMatchesStructured(JsonDocument response)
+    {
+        var result = response.RootElement.GetProperty("result");
+        var content = result.GetProperty("content");
+        Assert.Equal(1, content.GetArrayLength());
+        Assert.Equal("text", content[0].GetProperty("type").GetString());
+        using var text = JsonDocument.Parse(content[0].GetProperty("text").GetString()!);
+        Assert.True(JsonElement.DeepEquals(Structured(response), text.RootElement));
+    }
+
+    [Fact]
     public async Task InvalidAndMissingIdsProduceClearErrors()
     {
         using var factory = new WebApplicationFactory<Program>();
@@ -93,6 +211,9 @@ public sealed class McpApiTests
     [InlineData("http://evil.example")]
     [InlineData("http://localhost:5000.evil.example")]
     [InlineData("null")]
+    [InlineData("http://localhost:4200")]
+    [InlineData("http://127.0.0.1:5000")]
+    [InlineData("https://localhost:5000")]
     public async Task UntrustedOriginsAreRejected(string origin)
     {
         using var factory = new WebApplicationFactory<Program>();
