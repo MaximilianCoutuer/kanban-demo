@@ -9,9 +9,29 @@ builder.Services.AddDbContext<KanbanDbContext>(options =>
     options.UseInMemoryDatabase(databaseName));
 builder.Services.AddSingleton<TaskStoreLock>();
 builder.Services.AddProblemDetails();
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithTools<KanbanTools>();
 
 var app = builder.Build();
 app.UseExceptionHandler();
+
+// MCP is local and unauthenticated. Reject cross-origin browser requests rather
+// than allowing a remote site to use the user's browser as a proxy to the API.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/mcp") &&
+        context.Request.Headers.TryGetValue("Origin", out var origin) &&
+        (origin.Count != 1 || !string.Equals(origin[0], "http://localhost:5000", StringComparison.OrdinalIgnoreCase)))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+
+    await next();
+});
+
+app.MapMcp("/mcp");
 
 app.MapGet("/api/tasks", (KanbanDbContext db, TaskStoreLock storeLock) =>
 {
