@@ -2,7 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Kanban.Api;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kanban.Api.Tests;
 
@@ -104,8 +109,14 @@ public sealed class TasksApiTests
         var missing = Guid.NewGuid();
         using var missingComplete = await client.PostAsync($"/api/tasks/{missing}/complete", null);
         using var missingDelete = await client.DeleteAsync($"/api/tasks/{missing}");
-        Assert.Equal(HttpStatusCode.NotFound, missingComplete.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, missingDelete.StatusCode);
+        foreach (var response in new[] { missingComplete, missingDelete })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(404, body.RootElement.GetProperty("status").GetInt32());
+            Assert.Equal("Task not found", body.RootElement.GetProperty("title").GetString());
+        }
     }
 
     [Fact]
@@ -143,17 +154,42 @@ public sealed class TasksApiTests
     }
 
     [Fact]
-    public async Task BrowserClientsCanCallTheApi()
+    public async Task CrossOriginRequestsAreNotGrantedWildcardAccess()
     {
         using var factory = new WebApplicationFactory<Program>();
         using var client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/tasks");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/tasks");
         request.Headers.Add("Origin", "http://localhost:4200");
-        request.Headers.Add("Access-Control-Request-Method", "POST");
-        request.Headers.Add("Access-Control-Request-Headers", "content-type");
         using var response = await client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Equal("*", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Production")]
+    public async Task UnhandledExceptionsReturnSafeProblem(string environment)
+    {
+        const string sensitiveMessage = "Sensitive exception detail";
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment(environment);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<TaskStoreLock>();
+                services.AddSingleton<TaskStoreLock>(_ => throw new InvalidOperationException(sensitiveMessage));
+            });
+        });
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/tasks");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(sensitiveMessage, json);
+        using var body = JsonDocument.Parse(json);
+        Assert.Equal(500, body.RootElement.GetProperty("status").GetInt32());
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("title").GetString()));
     }
 
     private static Task<HttpResponseMessage> PostJson(HttpClient client, string json)
