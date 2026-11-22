@@ -1,11 +1,7 @@
 
 ---
 name: explore-user-journey
-description: >
-  Verify AgentBoard functionality by interacting
-  with the running Angular application in a browser.
-  Use when testing UI behavior, validating acceptance
-  criteria, or performing exploratory testing.
+description: Verify AgentBoard functionality by interacting with the running Angular application in a browser. Use when testing UI behavior, validating acceptance criteria, or performing exploratory testing.
 ---
 
 # Explore User Journey
