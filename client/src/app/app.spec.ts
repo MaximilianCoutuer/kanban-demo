@@ -221,7 +221,7 @@ describe('task board', () => {
   });
 
   it('keeps cards visible and blocks conflicting operations until bulk deletion succeeds', () => {
-    http.expectOne('/api/tasks').flush([task, done]);
+    http.expectOne('/api/tasks').flush([task, { id: 'c', title: 'Working', status: 'InProgress' }, done]);
     render();
     enter('Draft');
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -232,6 +232,7 @@ describe('task board', () => {
     expect(button('Deleting all…').disabled).toBe(true);
     expect(element.querySelector('[role="status"]')!.textContent).toContain('Deleting all tasks');
     expect(element.textContent).toContain('First task');
+    expect(element.textContent).toContain('Working');
     expect(element.textContent).toContain('Finished');
     expect(button('Add task').disabled).toBe(true);
     expect(button('Complete').disabled).toBe(true);
@@ -249,6 +250,7 @@ describe('task board', () => {
     render();
     http.expectNone('/api/tasks');
     expect(element.querySelectorAll('.card')).toHaveLength(0);
+    expect(element.querySelectorAll('.empty')).toHaveLength(3);
     expect(element.querySelector('input')!.value).toBe('Draft');
     expect(button('Delete all tasks').disabled).toBe(true);
   });
