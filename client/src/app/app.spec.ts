@@ -276,6 +276,40 @@ describe('task board', () => {
     expect(button('Delete all tasks').disabled).toBe(false);
   });
 
+  it('excludes bulk deletion while an individual completion alone is pending', () => {
+    http.expectOne('/api/tasks').flush([task, done]);
+    render();
+    const confirm = vi.spyOn(window, 'confirm');
+    expect(button('Delete all tasks').disabled).toBe(false);
+    button('Complete').click();
+    const complete = http.expectOne('/api/tasks/a/complete');
+    render();
+    expect(button('Delete all tasks').disabled).toBe(true);
+    fixture.componentInstance['deleteAll']();
+    expect(confirm).not.toHaveBeenCalled();
+    http.expectNone('/api/tasks');
+    complete.flush({ ...task, status: 'Done' });
+    render();
+    expect(button('Delete all tasks').disabled).toBe(false);
+  });
+
+  it('excludes bulk deletion while an individual deletion alone is pending', () => {
+    http.expectOne('/api/tasks').flush([task, done]);
+    render();
+    const confirm = vi.spyOn(window, 'confirm');
+    expect(button('Delete all tasks').disabled).toBe(false);
+    element.querySelector<HTMLButtonElement>('[aria-label="Delete Finished"]')!.click();
+    const remove = http.expectOne('/api/tasks/b');
+    render();
+    expect(button('Delete all tasks').disabled).toBe(true);
+    fixture.componentInstance['deleteAll']();
+    expect(confirm).not.toHaveBeenCalled();
+    http.expectNone('/api/tasks');
+    remove.flush(null, { status: 204, statusText: 'No Content' });
+    render();
+    expect(button('Delete all tasks').disabled).toBe(false);
+  });
+
   it('excludes creation, individual mutations, and pending reconciliation', () => {
     http.expectOne('/api/tasks').flush([task, done]);
     render();
