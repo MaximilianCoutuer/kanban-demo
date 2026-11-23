@@ -6,6 +6,8 @@ user-invocable: true
 ---
 Turn the supplied prompt or GitHub issue into a completed, verified change by coordinating the specialist agents.
 
+Maintain `implementation-state.md` at the repository root as a concise recovery log while building. Create or update it at the start of implementation and after each major phase, delegation, integration, or verification result. Record the current phase, completed work and relevant files, design decisions, each worktree and branch in use, commit references, checks and outcomes, blockers, and the next concrete steps. Keep it current before handing work off or stopping after a failure or interruption; do not rely on conversation history as the only record. Preserve existing content that is unrelated to the current task and never include secrets.
+
 1. Establish the requirements from the prompt and, when provided, the referenced GitHub issue. Inspect the repository instructions and relevant code.
 2. Launch the other agents directly to coordinate the work: delegate requirements and repository context to Architect and wait for its design before implementation.
 3. Give Architect's design and relevant requirements to API Engineer and Angular Engineer. They may work in parallel only after API/UI contracts and shared decisions are clear. Launch each implementation agent in its own isolated Git worktree session from the same base revision, with a distinct branch and explicit worktree path. Never let both implementation agents use the same worktree. If isolated worktrees cannot be provisioned, do not fall back to a shared worktree; report the blocker.
