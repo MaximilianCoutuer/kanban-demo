@@ -4,7 +4,7 @@ A deliberately small Kanban board for a technical session, using Angular for the
 
 ## Features
 
-- Add tasks with a title, complete them, and delete them.
+- Add tasks with a title, complete them, delete them individually, or confirm deletion of all tasks across the shared board.
 - View **To Do**, **In Progress**, and **Done** columns. New tasks start in To Do; completing them moves them directly to Done.
 - Keep tasks synchronized with the API, including after browser refresh.
 - Show request errors without treating failed changes as successful.
@@ -50,6 +50,7 @@ API operations:
 | GET | `/api/tasks` | Task array |
 | POST | `/api/tasks` | Create from `{"title":"My task"}`; returns the created task |
 | POST | `/api/tasks/{id}/complete` | Returns the completed task; repeated completion is safe |
+| DELETE | `/api/tasks` | Deletes all tasks; no request body, returns an empty 204 response |
 | DELETE | `/api/tasks/{id}` | Deletes the task; returns 204 |
 
 Invalid input returns 400; missing task IDs return 404. Errors use Problem Details.

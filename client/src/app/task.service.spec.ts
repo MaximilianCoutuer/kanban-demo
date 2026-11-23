@@ -38,4 +38,14 @@ describe('TaskService', () => {
     expect(remove.request.method).toBe('DELETE');
     remove.flush(null, { status: 204, statusText: 'No Content' });
   });
+
+  it('deletes the task collection without a request body', () => {
+    let completed = false;
+    service.deleteAll().subscribe({ complete: () => completed = true });
+    const request = http.expectOne('/api/tasks');
+    expect(request.request.method).toBe('DELETE');
+    expect(request.request.body).toBeNull();
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    expect(completed).toBe(true);
+  });
 });

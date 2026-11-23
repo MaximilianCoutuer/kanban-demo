@@ -3,6 +3,10 @@
     <p class="eyebrow">Task board</p>
     <h1>Kanban</h1>
     <p>Keep track of your work, one task at a time.</p>
+    <button type="button" class="delete" (click)="deleteAll()" [disabled]="deleteAllDisabled()">
+      {{ deletingAll() ? 'Deleting all…' : 'Delete all tasks' }}
+    </button>
+    @if (deletingAll()) { <p class="help" role="status">Deleting all tasks…</p> }
   </header>
 
   <form class="new-task" [formGroup]="form" (ngSubmit)="add()" novalidate>
