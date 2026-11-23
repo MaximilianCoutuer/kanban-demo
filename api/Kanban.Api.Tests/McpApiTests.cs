@@ -71,6 +71,13 @@ public sealed class McpApiTests
         Assert.Single(Structured(afterDelete).GetProperty("tasks").EnumerateArray());
         using var missing = await Call(client, "get_kanban_item", new { id = second.Id.ToString() });
         AssertToolError(missing, "Task not found");
+
+        using var deletedAll = await client.DeleteAsync("/api/tasks");
+        Assert.Equal(HttpStatusCode.NoContent, deletedAll.StatusCode);
+        using var afterDeleteAll = await Call(client, "list_kanban_items", new { });
+        Assert.Empty(Structured(afterDeleteAll).GetProperty("tasks").EnumerateArray());
+        using var missingAfterDeleteAll = await Call(client, "get_kanban_item", new { id = first.Id.ToString() });
+        AssertToolError(missingAfterDeleteAll, "Task not found");
     }
 
     [Fact]

@@ -97,6 +97,16 @@ app.MapPost("/api/tasks/{id}/complete", (string id, KanbanDbContext db, TaskStor
     }
 });
 
+app.MapDelete("/api/tasks", (KanbanDbContext db, TaskStoreLock storeLock) =>
+{
+    lock (storeLock)
+    {
+        db.Tasks.RemoveRange(db.Tasks.ToArray());
+        db.SaveChanges();
+        return Results.NoContent();
+    }
+});
+
 app.MapDelete("/api/tasks/{id}", (string id, KanbanDbContext db, TaskStoreLock storeLock) =>
 {
     if (!Guid.TryParse(id, out var taskId))

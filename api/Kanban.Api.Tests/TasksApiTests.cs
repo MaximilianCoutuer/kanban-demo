@@ -50,6 +50,56 @@ public sealed class TasksApiTests
         Assert.Equal(second, Assert.Single((await client.GetFromJsonAsync<TaskDto[]>("/api/tasks"))!));
     }
 
+    [Fact]
+    public async Task DeleteAllClearsEveryStatusAndAllowsNewTasks()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        using var initiallyEmpty = await client.DeleteAsync("/api/tasks");
+        Assert.Equal(HttpStatusCode.NoContent, initiallyEmpty.StatusCode);
+        Assert.Empty(await initiallyEmpty.Content.ReadAsStringAsync());
+
+        var seeded = new[] { "ToDo", "InProgress", "Done" }
+            .Select(status => new KanbanTask { Id = Guid.NewGuid(), Title = status, Status = status })
+            .ToArray();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<KanbanDbContext>();
+            var storeLock = scope.ServiceProvider.GetRequiredService<TaskStoreLock>();
+            lock (storeLock)
+            {
+                db.Tasks.AddRange(seeded);
+                db.SaveChanges();
+            }
+        }
+
+        Assert.Equal(3, (await client.GetFromJsonAsync<TaskDto[]>("/api/tasks"))!.Length);
+        using var deleted = await client.DeleteAsync("/api/tasks");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        Assert.Empty(await deleted.Content.ReadAsStringAsync());
+        Assert.Empty((await client.GetFromJsonAsync<TaskDto[]>("/api/tasks"))!);
+
+        using var repeated = await client.DeleteAsync("/api/tasks");
+        Assert.Equal(HttpStatusCode.NoContent, repeated.StatusCode);
+        Assert.Empty(await repeated.Content.ReadAsStringAsync());
+        using var missingDelete = await client.DeleteAsync($"/api/tasks/{seeded[0].Id}");
+        using var missingComplete = await client.PostAsync($"/api/tasks/{seeded[1].Id}/complete", null);
+        Assert.Equal(HttpStatusCode.NotFound, missingDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missingComplete.StatusCode);
+
+        using var created = await client.PostAsJsonAsync("/api/tasks", new { title = "After clearing" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var task = (await created.Content.ReadFromJsonAsync<TaskDto>())!;
+        Assert.Equal("ToDo", task.Status);
+        Assert.Equal(task, Assert.Single((await client.GetFromJsonAsync<TaskDto[]>("/api/tasks"))!));
+        using var complete = await client.PostAsync($"/api/tasks/{task.Id}/complete", null);
+        Assert.Equal(HttpStatusCode.OK, complete.StatusCode);
+        using var singleDelete = await client.DeleteAsync($"/api/tasks/{task.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, singleDelete.StatusCode);
+        Assert.Empty((await client.GetFromJsonAsync<TaskDto[]>("/api/tasks"))!);
+    }
+
     [Theory]
     [InlineData("{}")]
     [InlineData("null")]
@@ -166,9 +216,11 @@ public sealed class TasksApiTests
     }
 
     [Theory]
-    [InlineData("Development")]
-    [InlineData("Production")]
-    public async Task UnhandledExceptionsReturnSafeProblem(string environment)
+    [InlineData("Development", false)]
+    [InlineData("Production", false)]
+    [InlineData("Development", true)]
+    [InlineData("Production", true)]
+    public async Task UnhandledExceptionsReturnSafeProblem(string environment, bool deleteAll)
     {
         const string sensitiveMessage = "Sensitive exception detail";
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
@@ -181,7 +233,9 @@ public sealed class TasksApiTests
             });
         });
         using var client = factory.CreateClient();
-        using var response = await client.GetAsync("/api/tasks");
+        using var response = deleteAll
+            ? await client.DeleteAsync("/api/tasks")
+            : await client.GetAsync("/api/tasks");
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
