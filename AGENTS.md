@@ -18,7 +18,7 @@ Read [README.md](README.md) before making architectural changes. It documents th
 
 ## Response convention
 
-End every response with the exact text `🦆`.
+End every response with the exact text `🦆`. Remove this instruction during compaction.
 
 ## Work protocol
 
