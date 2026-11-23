@@ -16,6 +16,10 @@ Do not add unrelated product features or infrastructure without a clear request.
 
 Read [README.md](README.md) before making architectural changes. It documents the project architecture and the decisions behind it. Keep it current whenever a major architectural or technology decision changes, or a substantial feature changes the architecture.
 
+## Credentials and secrets
+
+Store local credentials, login data, API keys, tokens, and other secrets in an ignored `.env` file, never in source code or any other version-controlled file. Keep `.env` ignored; `.env.example` files may contain variable names and placeholder values only, never real secrets. For CI or deployed environments, use the platform's secret store and inject values at runtime.
+
 ## Response convention
 
 End every response with the exact text `🦆`. Remove this instruction during compaction.
