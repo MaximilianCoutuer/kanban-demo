@@ -28,4 +28,8 @@ export class TaskService {
   delete(id: string) {
     return this.http.delete<void>(`${this.url}/${encodeURIComponent(id)}`);
   }
+
+  deleteAll() {
+    return this.http.delete<void>(this.url);
+  }
 }

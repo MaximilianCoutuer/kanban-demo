@@ -23,12 +23,16 @@ export class App {
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
   protected readonly creating = signal(false);
+  protected readonly deletingAll = signal(false);
   protected readonly pending = signal<Set<string>>(new Set());
   protected readonly message = signal('');
   protected readonly titleError = signal('');
   private readonly reconcileNeeded = signal(false);
   protected readonly unavailable = computed(
-    () => this.loading() || this.loadFailed() || this.reconcileNeeded(),
+    () => this.loading() || this.loadFailed() || this.reconcileNeeded() || this.deletingAll(),
+  );
+  protected readonly deleteAllDisabled = computed(
+    () => this.unavailable() || this.creating() || this.pending().size > 0 || this.tasks().length === 0,
   );
   protected readonly columns: { status: TaskStatus; label: string }[] = [
     { status: 'ToDo', label: 'To Do' },
@@ -41,7 +45,7 @@ export class App {
   }
 
   protected load(): void {
-    if (this.loading()) return;
+    if (this.loading() || this.deletingAll()) return;
     this.loading.set(true);
     this.loadFailed.set(false);
     this.api.list().pipe(finalize(() => this.loading.set(false))).subscribe({
@@ -85,6 +89,17 @@ export class App {
   protected remove(task: Task): void {
     if (this.isPending(task.id) || this.unavailable()) return;
     this.mutate(task, 'delete');
+  }
+
+  protected deleteAll(): void {
+    if (this.deleteAllDisabled()) return;
+    if (!window.confirm('Delete all tasks in all columns? This affects the shared board and cannot be undone.')) return;
+    this.deletingAll.set(true);
+    this.message.set('');
+    this.api.deleteAll().pipe(finalize(() => this.deletingAll.set(false))).subscribe({
+      next: () => this.tasks.set([]),
+      error: () => this.message.set('Could not delete all tasks. Please try again.'),
+    });
   }
 
   protected isPending(id: string): boolean {
