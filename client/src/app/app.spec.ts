@@ -43,6 +43,32 @@ describe('task board', () => {
     vi.restoreAllMocks();
   });
 
+  it('keeps one copyright footer after main while loading, failing, and recovering', () => {
+    const main = element.querySelector('main')!;
+    const footers = element.querySelectorAll('footer');
+    expect(footers).toHaveLength(1);
+    const footer = footers[0];
+    expect(footer.textContent).toBe('(c) Maximilian Coutuer');
+    expect(getComputedStyle(footer).height).toBe('48px');
+    expect(main.querySelector('footer')).toBeNull();
+    expect(main.nextElementSibling).toBe(footer);
+    expect(element.textContent).toContain('Loading tasks');
+
+    http.expectOne('/api/tasks').flush({}, { status: 500, statusText: 'Error' });
+    render();
+    expect(element.textContent).toContain('Could not load tasks');
+    expect(element.querySelector('footer')).toBe(footer);
+
+    button('Retry').click();
+    render();
+    expect(element.textContent).toContain('Loading tasks');
+    expect(element.querySelector('footer')).toBe(footer);
+    http.expectOne('/api/tasks').flush([]);
+    render();
+    expect(element.querySelector('footer')).toBe(footer);
+    expect(footer.textContent).toBe('(c) Maximilian Coutuer');
+  });
+
   it('loads all columns and retries an initial failure', () => {
     expect(element.textContent).toContain('Loading tasks');
     expect(button('Add task').disabled).toBe(true);
